@@ -2,6 +2,6 @@
 *.obj filter=lfs diff=lfs merge=binary -text
 *.a filter=lfs diff=lfs merge=binary -text
 *.pack filter=lfs diff=lfs merge=binary -text
-*.png filter=lfs diff=lfs merge=binary -text
+*.png binary
 *.o filter=lfs diff=lfs merge=binary -text
 *.bin filter=lfs diff=lfs merge=binary -text
