@@ -3,58 +3,45 @@
 </p>
 
 <p align="center">
-  <b>OnionHEN Plugin Boilerplate</b><br/>
-  A ready-to-build starting point for standalone OnionHEN plugins
+  <b>OnionHEN ShadowMount+ Plugin</b><br/>
+  Automatic PS5 game image scanning and mounting as a managed OnionHEN plugin
 </p>
 
 <p align="center">
-  <a href="README_ZH.md">简体中文</a>
-  ·
-  <b>English</b>
+  <b>English</b> · <a href="README_ZH.md">简体中文</a>
 </p>
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="license"/></a>
-  <img src="https://img.shields.io/badge/Platform-PlayStation%205-003791?style=flat&logo=playstation" alt="PlayStation 5"/>
-  <img src="https://img.shields.io/badge/C-00599C?style=flat&logo=c&logoColor=white" alt="C"/>
-  <img src="https://img.shields.io/badge/Build-CMake-064F8C?style=flat&logo=cmake" alt="CMake"/>
-</p>
+This repository packages ShadowMountPlus as a standalone OnionHEN plugin.
+OnionHEN discovers the ELF, validates its embedded `.onion_plugin` descriptor,
+owns its process lifecycle, and removes its dynamic UI contribution when the
+plugin stops.
 
-This repository is a minimal, production-oriented template for an OnionHEN
-plugin. It builds a normal PS5 ELF with an embedded `.onion_plugin` descriptor;
-there is no package, archive, or separate manifest to maintain.
+> [!WARNING]
+> Mounting images can cause shutdown problems or data corruption on internal
+> drives, especially on older firmware. Test only on hardware and data you can
+> recover.
 
-The included example connects to the OnionHEN daemon, opens a plugin session,
-registers a dynamic settings UI, handles toggle/list/input/action events, and
-unregisters its UI during shutdown.
+## Features
+
+- Automatic scanning, mounting, and registration of supported game dumps
+- `.ffpkg`, `.exfat`, `.ffpfs`, and experimental `.ffpfsc` image support
+- Dynamic OnionHEN page with an immediate scan action
+- Graceful stop, reload, replacement, deletion, and rest-mode recovery through
+  the OnionHEN plugin manager
+- Existing ShadowMountPlus configuration, logging, fakelib, and kstuff
+  integration retained
+- No package container or extraction step; metadata is embedded in the ELF
+
+The plugin is marked `AUTO_START` because the scanner is a long-running
+background service. Kstuff-lite v1.07 or newer must already be active.
 
 ## Requirements
 
+- An OnionHEN build with external plugin discovery and dynamic UI support
+- A supported jailbroken PS5 firmware and Kstuff-lite v1.07+
 - [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk)
-- CMake 3.20 or newer
-- Ninja
+- CMake 3.20 or newer and Ninja
 - Git and Python 3.9 or newer
-
-## Create your plugin
-
-Use this repository as a GitHub template or clone it, then change the plugin
-metadata at the top of [`CMakeLists.txt`](CMakeLists.txt):
-
-```cmake
-set(ONION_PLUGIN_TARGET example_plugin)
-set(ONION_PLUGIN_ID ONIO10001)
-set(ONION_PLUGIN_VERSION 1.00)
-set(ONION_PLUGIN_NAME "Example Plugin")
-```
-
-`ONION_PLUGIN_ID` must be four ASCII letters followed by five digits. Treat it
-as a permanent application identity after publishing. Versions use `N.NN`.
-The configured values generate `plugin_config.h` and are shared by the ELF
-descriptor, UI contribution, logs, and post-build validation.
-
-Replace the example behavior in `source/plugin_ui.c` and `source/main.c`. Keep
-`source/plugin_descriptor.c` unless the plugin needs different capabilities or
-lifecycle flags.
 
 ## Build
 
@@ -64,12 +51,10 @@ cmake --preset ps5
 cmake --build --preset ps5
 ```
 
-The result is `build-ps5/bin/example_plugin.elf`. The build automatically
-checks that the ELF contains a valid descriptor with the configured ID and
-version.
+The output is `build-ps5/bin/shadowmountplus.elf`. The build validates plugin
+ID `SMPL00001`, version `1.00`, and the embedded SDK descriptor.
 
-The SDK dependency is pinned to a tested commit. During SDK development, use a
-local checkout without changing the project:
+To build against a local SDK checkout:
 
 ```sh
 cmake --preset ps5 \
@@ -77,62 +62,55 @@ cmake --preset ps5 \
 cmake --build --preset ps5
 ```
 
-Delete `build-ps5/` before switching between downloaded and local SDK sources.
+Delete `build-ps5/` before switching between a downloaded SDK and a local SDK
+checkout.
 
-## Install and run
+## Install
 
-Upload the ELF to the PS5 plugin directory using its descriptor ID as the file
-name:
-
-```text
-/data/OnionHEN/plugins/ONIO10001.elf
-```
-
-For an atomic update, upload it as `ONIO10001.installing`, then rename it to
-`ONIO10001.elf`. OnionHEN discovers the plugin and starts it automatically
-because the example descriptor includes `AUTO_START`. Open **★ OnionHEN
-Plugins**, select the plugin, then open its contributed settings page.
-
-The example writes lifecycle and error messages to
-`/data/OnionHEN/ONIO10001.log`. OnionHEN removes the contribution when the
-plugin exits or disconnects; the plugin also unregisters explicitly on normal
-`SIGINT`/`SIGTERM` shutdown.
-
-## Project structure
+Upload the completed ELF atomically:
 
 ```text
-.
-├── cmake/ps5-toolchain.cmake     PS5 compiler selection
-├── include/plugin_config.h.in    generated metadata contract
-├── include/plugin_ui.h           example UI module interface
-├── source/main.c                 process/session lifecycle and event loop
-├── source/plugin_descriptor.c    embedded ELF descriptor
-├── source/plugin_ui.c            UI document and action handling
-├── CMakeLists.txt                metadata, SDK dependency, plugin target
-└── CMakePresets.json             standard PS5 configure/build commands
+/data/OnionHEN/plugins/SMPL00001.installing
+    rename after upload
+/data/OnionHEN/plugins/SMPL00001.elf
 ```
 
-The split is intentional: `main.c` owns resources and shutdown ordering,
-`plugin_ui.c` owns presentation state and actions, and the SDK owns protocol,
-transport, validation, and ELF inspection. Plugin code depends only on the
-public C ABI.
+OnionHEN detects and validates the final `.elf`, then starts the plugin. Open
+**★ OnionHEN Plugins**, select **ShadowMount+**, and open its contributed page
+to request an immediate scan. Replacing the ELF restarts the managed process;
+deleting it stops the scanner and removes its UI.
 
-## Customization notes
+Runtime files:
 
-- Request only capabilities the plugin actually uses.
-- Remove `AUTO_START` for a manually started plugin.
-- Keep `LONG_RUNNING` for a resident service and `STOP_SUPPORTED` when graceful
-  termination is implemented.
-- Node IDs and binding keys are stable protocol identifiers, not display text.
-- Do not send pointers, C++ objects, or compiler-specific layouts across IPC.
-- Validate action values in the plugin even though the UI validates input.
-- Do not commit PS5 SDK files, proprietary libraries, keys, decrypted system
-  files, console identifiers, logs, or built ELF files.
+| Path | Purpose |
+| --- | --- |
+| `/data/OnionHEN/plugins/SMPL00001.elf` | Installed plugin |
+| `/data/OnionHEN/SMPL00001.log` | Plugin lifecycle and daemon-session log |
+| `/data/shadowmount/config.ini` | ShadowMountPlus configuration |
+| `/data/shadowmount/debug.log` | Scanner and mount log |
+| `/data/shadowmount/autotune.ini` | Automatically learned overrides |
 
-The current SDK provides dynamic UI and IPC. Daemon-backed logging,
-notifications, and persistent configuration services may return
-`ONION_E_NOT_SUPPORTED`; the example therefore keeps state in memory and uses
-local file logging.
+The first run creates `config.ini` from the bundled upstream template. See
+[`third_party/ShadowMountPlus/config.ini.example`](third_party/ShadowMountPlus/config.ini.example)
+for all options and scan-path defaults.
+
+## Architecture
+
+```text
+OnionHEN plugin manager
+  -> trusted SDK session
+  -> source/main.c                    process lifecycle and UI event loop
+     -> source/plugin_ui.c            UI document and action validation
+     -> source/shadowmount_service.c  synchronized worker lifecycle
+        -> source/shadowmount_core.c  standalone payload adapter
+           -> third_party/ShadowMountPlus + SQLite
+```
+
+The descriptor declares notify, IPC, UI, process, and kernel capabilities with
+`AUTO_START`, `LONG_RUNNING`, and `STOP_SUPPORTED`. The main thread owns the SDK
+session and UI event pump while the scanner runs on one service-owned worker.
+Shutdown requests wake the scanner, complete mount/database cleanup, and join
+the worker before the process disconnects from OnionHEN.
 
 ## Contributing and security
 
@@ -140,17 +118,14 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 Participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Report
 security-sensitive issues privately according to [SECURITY.md](SECURITY.md).
 
-## Related projects
+## Credits and license
 
-- [OnionHEN](https://github.com/aydencharles/onionHEN)
-- [OnionHEN Plugin SDK](https://github.com/OnionBuddies/onionHEN-plugin-sdk)
-- [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk)
+This plugin is based on
+[`drakmor/ShadowMountPlus`](https://github.com/drakmor/ShadowMountPlus) and
+retains its GPL notices. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+for source provenance and local integration notes.
 
-## License
-
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
-Third-party components retain their respective licenses.
-
+The repository is licensed under the [GNU General Public License v3.0](LICENSE).
 OnionHEN is an unofficial homebrew project and is not affiliated with Sony
 Interactive Entertainment. Use it only on hardware you own and at your own
-risk. No warranty is provided.
+risk.

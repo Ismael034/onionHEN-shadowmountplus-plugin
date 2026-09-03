@@ -4,17 +4,22 @@
 #include <onion/transport.h>
 #include <onion/ui.h>
 
+#include <ps5/kernel.h>
+
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "plugin_config.h"
 #include "plugin_ui.h"
+#include "shadowmount_service.h"
 
 #define CONNECT_ATTEMPTS 30
 #define CONNECT_RETRY_US (250 * 1000)
 #define EVENT_POLL_US (100 * 1000)
+#define PLUGIN_AUTH_ID UINT64_C(0x4800000000000006)
 
 extern const onion_plugin_descriptor_v1 onion_plugin_descriptor;
 
@@ -25,10 +30,11 @@ typedef struct plugin_app {
     onion_host_services_v1 services;
     onion_ui_document *document;
     onion_ui_handle ui_handle;
-    plugin_ui_state ui_state;
+    shadowmount_service scanner;
     FILE *log_file;
     int transport_connected;
     int client_initialized;
+    int scanner_initialized;
 } plugin_app;
 
 static volatile sig_atomic_t running = 1;
@@ -66,9 +72,12 @@ static onion_status connect_to_daemon(plugin_app *app) {
 }
 
 static onion_status start_plugin(plugin_app *app) {
+    if (kernel_set_ucred_authid(getpid(), PLUGIN_AUTH_ID) != 0) {
+        return ONION_E_PERMISSION;
+    }
+
     onion_status status = connect_to_daemon(app);
     if (status != ONION_OK) return status;
-
     status = onion_client_init(&app->client, &app->transport);
     if (status != ONION_OK) return status;
     app->client_initialized = 1;
@@ -77,14 +86,17 @@ static onion_status start_plugin(plugin_app *app) {
     if (status == ONION_OK) {
         status = onion_client_make_services(&app->client, &app->services);
     }
-    if (status == ONION_OK) {
-        status = plugin_ui_create(&app->ui_state, &app->document);
-    }
+    if (status == ONION_OK) status = plugin_ui_create(&app->document);
     if (status == ONION_OK) {
         status = onion_ui_register(
             &app->services, app->document, &app->ui_handle);
     }
-    return status;
+    if (status != ONION_OK) return status;
+
+    if (!shadowmount_service_init(&app->scanner)) return ONION_E_IO;
+    app->scanner_initialized = 1;
+    if (!shadowmount_service_start(&app->scanner)) return ONION_E_IO;
+    return ONION_OK;
 }
 
 static void stop_plugin(plugin_app *app) {
@@ -94,6 +106,10 @@ static void stop_plugin(plugin_app *app) {
     }
     onion_ui_document_destroy(app->document);
     app->document = NULL;
+    if (app->scanner_initialized) {
+        shadowmount_service_destroy(&app->scanner);
+        app->scanner_initialized = 0;
+    }
     if (app->client_initialized) {
         onion_client_deinit(&app->client);
         app->client_initialized = 0;
@@ -104,8 +120,25 @@ static void stop_plugin(plugin_app *app) {
     }
 }
 
+static onion_status apply_action(plugin_app *app,
+                                 const plugin_ui_action *action) {
+    switch (action->kind) {
+    case PLUGIN_UI_ACTION_SCAN_NOW:
+        shadowmount_service_request_scan(&app->scanner);
+        return ONION_OK;
+    case PLUGIN_UI_ACTION_NONE:
+        return ONION_E_NOT_FOUND;
+    }
+    return ONION_E_NOT_FOUND;
+}
+
 static int run_event_loop(plugin_app *app) {
     while (running) {
+        if (!shadowmount_service_running(&app->scanner)) {
+            log_message(app, "[%s] scanner stopped unexpectedly\n", PLUGIN_ID);
+            return 1;
+        }
+
         onion_ui_event_v1 event;
         onion_status status = onion_client_poll_ui_event(&app->client, &event);
         if (status == ONION_E_NOT_FOUND) {
@@ -118,10 +151,11 @@ static int run_event_loop(plugin_app *app) {
             return 1;
         }
 
-        status = plugin_ui_handle_action(
-            &app->ui_state, &app->services, app->ui_handle, &event);
+        plugin_ui_action action;
+        status = plugin_ui_decode_action(app->ui_handle, &event, &action);
+        if (status == ONION_OK) status = apply_action(app, &action);
         if (status != ONION_OK && status != ONION_E_NOT_FOUND) {
-            log_message(app, "[%s] rejected action %s: %s\n", PLUGIN_ID,
+            log_message(app, "[%s] action %s failed: %s\n", PLUGIN_ID,
                         event.node_id, onion_status_string(status));
         }
     }
@@ -130,18 +164,19 @@ static int run_event_loop(plugin_app *app) {
 
 int main(void) {
     plugin_app app = {0};
-    plugin_ui_state_init(&app.ui_state);
     app.log_file = fopen(PLUGIN_LOG_PATH, "a");
 
     signal(SIGINT, request_stop);
     signal(SIGTERM, request_stop);
+    signal(SIGPIPE, SIG_IGN);
+    (void)syscall(SYS_thr_set_name, -1, "shadowmountplus.elf");
     log_message(&app, "[%s] starting %s %s\n", PLUGIN_ID, PLUGIN_NAME,
                 PLUGIN_VERSION);
 
     const onion_status status = start_plugin(&app);
     int exit_code = 1;
     if (status == ONION_OK) {
-        log_message(&app, "[%s] UI registered with handle=%llu\n", PLUGIN_ID,
+        log_message(&app, "[%s] scanner ready; UI handle=%llu\n", PLUGIN_ID,
                     (unsigned long long)app.ui_handle);
         exit_code = run_event_loop(&app);
     } else {

@@ -25,6 +25,6 @@ errors should use the public bug report form.
 
 ## Scope
 
-This repository is an unofficial PS5 homebrew plugin template. Reports about
+This repository is an unofficial PS5 ShadowMountPlus plugin. Reports about
 Sony services, PlayStation Network, unrelated payloads, or vulnerabilities in
 the PS5 platform itself are outside this project's scope.

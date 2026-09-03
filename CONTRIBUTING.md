@@ -1,8 +1,8 @@
 # Contributing
 
-Keep contributions focused on making this repository a clear, reliable plugin
-starting point. SDK ABI or host behavior changes belong in their respective
-repositories.
+Keep contributions focused on ShadowMountPlus, its OnionHEN integration, and
+the vendored core adapter. SDK ABI or host behavior changes belong in their
+respective repositories.
 
 All participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -26,7 +26,10 @@ Before submitting a change:
 ## Design rules
 
 - Keep process/session lifecycle in `source/main.c`.
-- Keep UI construction and action handling in `source/plugin_ui.c`.
+- Keep UI construction and action decoding in `source/plugin_ui.c`.
+- Keep scanner thread ownership in `source/shadowmount_service.c`.
+- Keep standalone payload adaptation in `source/shadowmount_core.c`.
+- Keep upstream code under `third_party/` and document snapshot updates.
 - Define plugin identity once in `CMakeLists.txt`.
 - Use only the SDK's public C headers across the host boundary.
 - Validate input and return specific `onion_status` errors.
