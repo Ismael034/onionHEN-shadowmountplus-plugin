@@ -28,8 +28,12 @@
 - 保留 ShadowMountPlus 原有配置、日志、fakelib 与 kstuff 集成
 - 不使用压缩包或自定义容器，插件元数据直接嵌入 ELF
 
-插件声明了 `AUTO_START`，因为扫描器本身是常驻后台服务。运行前需要确保
-Kstuff-lite v1.07 或更高版本已启用。
+扫描器本身无需手动启用；只要插件进程在运行，它就会自动扫描并挂载。是否自动
+拉起该进程由 OnionHEN 管理：安装后请打开 **★ OnionHEN Plugins → ShadowMount+**，
+开启其 **Auto-start** 开关,这样 OnionHEN 每次开机都会自动启动它。（旧版 OnionHEN
+是从插件 descriptor 中读取这个标志的；本插件已不再声明该 flag,因为当前 OnionHEN
+会将其判定为未知 descriptor flag 并拒绝加载,自启动现在统一由这个开关管理。）
+运行前需要确保 Kstuff-lite v1.07 或更高版本已启用。
 
 ## 环境要求
 
@@ -100,7 +104,8 @@ OnionHEN plugin manager
 ```
 
 descriptor 声明 notify、IPC、UI、process、kernel capability，以及
-`AUTO_START`、`LONG_RUNNING`、`STOP_SUPPORTED` flag。主线程持有 SDK session
+`LONG_RUNNING`、`STOP_SUPPORTED` flag（自启动现在是 OnionHEN 侧的按插件开关，
+不再是 descriptor flag,详见上方安装说明）。主线程持有 SDK session
 和 UI 事件泵，扫描器由 service 独占的工作线程运行。停止时会唤醒扫描器，完成
 挂载和数据库清理，并等待工作线程退出后再断开 OnionHEN 连接。
 

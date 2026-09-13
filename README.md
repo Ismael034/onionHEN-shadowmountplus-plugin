@@ -32,8 +32,15 @@ plugin stops.
   integration retained
 - No package container or extraction step; metadata is embedded in the ELF
 
-The plugin is marked `AUTO_START` because the scanner is a long-running
-background service. Kstuff-lite v1.07 or newer must already be active.
+The scanner is a long-running background service with no manual enable step of
+its own; once the plugin process is running, it scans and mounts on its own.
+OnionHEN controls whether that process is launched automatically: after
+install, open **★ OnionHEN Plugins → ShadowMount+** and flip its **Auto-start**
+toggle so OnionHEN starts it on every boot without further action. (Older
+OnionHEN builds read this from the plugin descriptor instead; this plugin no
+longer sets that flag, since current OnionHEN builds reject it as an unknown
+descriptor flag and manage auto-start per plugin from this same toggle.)
+Kstuff-lite v1.07 or newer must already be active.
 
 ## Requirements
 
@@ -107,8 +114,10 @@ OnionHEN plugin manager
 ```
 
 The descriptor declares notify, IPC, UI, process, and kernel capabilities with
-`AUTO_START`, `LONG_RUNNING`, and `STOP_SUPPORTED`. The main thread owns the SDK
-session and UI event pump while the scanner runs on one service-owned worker.
+`LONG_RUNNING` and `STOP_SUPPORTED` (auto-start is a host-side per-plugin
+toggle, not a descriptor flag — see Install below). The main thread owns the
+SDK session and UI event pump while the scanner runs on one service-owned
+worker.
 Shutdown requests wake the scanner, complete mount/database cleanup, and join
 the worker before the process disconnects from OnionHEN.
 
