@@ -15,8 +15,6 @@
 
 static const char *const k_builtin_scan_paths[] = SM_DEFAULT_SCAN_PATHS_INITIALIZER;
 
-/* ---- small line-oriented editor for /data/shadowmount/config.ini ---- */
-
 typedef struct {
     char **lines;
     int count;
@@ -133,9 +131,6 @@ static bool write_config_lines(const line_list_t *list) {
     return true;
 }
 
-/* ---- config.ini directive parsing (independent of the vendored parser,
- * which keeps only its own merged runtime state, not raw line positions) ---- */
-
 static char *trim_inplace(char *text) {
     while (*text == ' ' || *text == '\t' || *text == '\r' || *text == '\n')
         text++;
@@ -206,8 +201,6 @@ static bool normalize_path_value(const char *input, char *out, size_t out_size) 
     snprintf(out, out_size, "%s", trimmed);
     return true;
 }
-
-/* ---- public API ---- */
 
 int shadowmount_paths_builtin_count(void) {
     int count = 0;

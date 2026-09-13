@@ -136,8 +136,6 @@ static onion_status apply_action(plugin_app *app,
                         PLUGIN_ID, action->scan_path_slot,
                         action->scan_path_value);
         }
-        /* Reflect whatever is actually on disk now, whether the edit was
-         * accepted or not, rather than trusting what the UI sent. */
         char slots[SHADOWMOUNT_UI_SCAN_SLOTS][SHADOWMOUNT_UI_SCAN_PATH_MAX + 1];
         (void)shadowmount_paths_load_custom(slots);
         (void)plugin_ui_set_scan_path(&app->services, app->ui_handle,
