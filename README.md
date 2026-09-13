@@ -25,7 +25,8 @@ plugin stops.
 
 - Automatic scanning, mounting, and registration of supported game dumps
 - `.ffpkg`, `.exfat`, `.ffpfs`, and experimental `.ffpfsc` image support
-- Dynamic OnionHEN page with an immediate scan action
+- Dynamic OnionHEN page with an immediate scan action and an editable list of
+  custom scan paths
 - Graceful stop, reload, replacement, deletion, and rest-mode recovery through
   the OnionHEN plugin manager
 - Existing ShadowMountPlus configuration, logging, fakelib, and kstuff
@@ -93,6 +94,23 @@ Runtime files:
 The first run creates `config.ini` from the bundled upstream template. See
 [`third_party/ShadowMountPlus/config.ini.example`](third_party/ShadowMountPlus/config.ini.example)
 for all options and scan-path defaults.
+
+### Scan paths
+
+By default ShadowMount+ scans a built-in list of folders on every attached
+volume, mirroring both etaHEN's and OnionHEN's conventions:
+`homebrew`, `etaHEN/games`, and `OnionHEN/games`, under `/data`, `/mnt/ext0`
+(internal M.2), `/mnt/ext1`, and each `/mnt/usb0`–`/mnt/usb7`, plus the raw
+`/mnt/usbN`/`/mnt/extN` roots themselves.
+
+Open **★ OnionHEN Plugins → ShadowMount+ → Scanner → Scan Paths** to add up
+to 6 extra folders of your own — enter an absolute path in any "Custom path"
+slot, or clear one to remove it. Paths added this way are additive: they
+scan alongside the built-in list, not instead of it (this plugin sets
+`scan_include_defaults=1` for you when you use this UI). Hand-editing
+`scanpath=` lines directly in `config.ini` keeps the older upstream behavior
+instead, where any `scanpath=` entry replaces the built-in list unless you
+add `scan_include_defaults=1` yourself.
 
 ## Architecture
 

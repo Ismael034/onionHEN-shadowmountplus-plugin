@@ -366,6 +366,10 @@ static void ensure_runtime_config_file(void) {
   printf("[CFG] Created default config from template: %s\n", CONFIG_FILE);
 }
 
+void shadowmount_core_ensure_config_file(void) {
+  ensure_runtime_config_file();
+}
+
 static void cleanup_kstuff_noautomount_files(void) {
   if (unlink(KSTUFF_NOAUTOMOUNT_FILE) == 0) {
     log_debug("[KSTUFF] removed shutdown sentinel: %s",

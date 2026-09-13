@@ -86,6 +86,7 @@ onion_add_plugin(
         source/plugin_descriptor.c
         source/plugin_ui.c
         source/shadowmount_core.c
+        source/shadowmount_paths.c
         source/shadowmount_service.c
         ${SHADOWMOUNT_SOURCES}
         ${SQLITE_SOURCE}

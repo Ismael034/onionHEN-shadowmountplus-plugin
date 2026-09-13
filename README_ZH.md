@@ -23,7 +23,7 @@
 
 - 自动扫描、挂载并注册受支持的游戏备份
 - 支持 `.ffpkg`、`.exfat`、`.ffpfs` 与实验性的 `.ffpfsc` 镜像
-- 动态注册 OnionHEN 页面，并提供立即扫描操作
+- 动态注册 OnionHEN 页面，提供立即扫描操作和可编辑的自定义扫描路径列表
 - 通过 OnionHEN 插件管理器支持停止、重载、替换、删除和休息模式恢复
 - 保留 ShadowMountPlus 原有配置、日志、fakelib 与 kstuff 集成
 - 不使用压缩包或自定义容器，插件元数据直接嵌入 ELF
@@ -86,6 +86,20 @@ OnionHEN 会发现并校验最终的 `.elf`，随后自动启动插件。进入
 
 首次运行会从内嵌模板创建 `config.ini`。完整选项和默认扫描路径见
 [`third_party/ShadowMountPlus/config.ini.example`](third_party/ShadowMountPlus/config.ini.example)。
+
+### 扫描路径
+
+默认情况下，ShadowMount+ 会在每个已挂载的存储上扫描一组内置文件夹，同时遵循
+etaHEN 和 OnionHEN 两种约定：`homebrew`、`etaHEN/games`、`OnionHEN/games`，
+分别位于 `/data`、`/mnt/ext0`（内置 M.2）、`/mnt/ext1`，以及每个
+`/mnt/usb0`–`/mnt/usb7`，还包括 `/mnt/usbN`/`/mnt/extN` 根目录本身。
+
+打开 **★ OnionHEN Plugins → ShadowMount+ → Scan Paths** 最多可添加 6 个自定义
+文件夹：在任意 "Custom path" 输入框中填写绝对路径即可添加，清空则移除。通过
+此界面添加的路径是叠加生效的——它们会与内置列表一起扫描，而不是替换它（本
+插件会自动为你设置 `scan_include_defaults=1`）。若直接手动编辑 `config.ini`
+中的 `scanpath=` 行，则保持旧版上游行为：任何 `scanpath=` 条目都会替换内置
+列表，除非你自己也加上 `scan_include_defaults=1`。
 
 ## 架构
 

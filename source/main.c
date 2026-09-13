@@ -14,6 +14,7 @@
 
 #include "plugin_config.h"
 #include "plugin_ui.h"
+#include "shadowmount_paths.h"
 #include "shadowmount_service.h"
 
 #define CONNECT_ATTEMPTS 30
@@ -126,6 +127,26 @@ static onion_status apply_action(plugin_app *app,
     case PLUGIN_UI_ACTION_SCAN_NOW:
         shadowmount_service_request_scan(&app->scanner);
         return ONION_OK;
+
+    case PLUGIN_UI_ACTION_SET_SCAN_PATH: {
+        const bool accepted = shadowmount_paths_set_custom(
+            action->scan_path_slot, action->scan_path_value);
+        if (!accepted) {
+            log_message(app, "[%s] rejected scan path slot %d: %s\n",
+                        PLUGIN_ID, action->scan_path_slot,
+                        action->scan_path_value);
+        }
+        /* Reflect whatever is actually on disk now, whether the edit was
+         * accepted or not, rather than trusting what the UI sent. */
+        char slots[SHADOWMOUNT_UI_SCAN_SLOTS][SHADOWMOUNT_UI_SCAN_PATH_MAX + 1];
+        (void)shadowmount_paths_load_custom(slots);
+        (void)plugin_ui_set_scan_path(&app->services, app->ui_handle,
+                                      action->scan_path_slot,
+                                      slots[action->scan_path_slot]);
+        if (accepted) shadowmount_service_request_scan(&app->scanner);
+        return accepted ? ONION_OK : ONION_E_INVALID_ARGUMENT;
+    }
+
     case PLUGIN_UI_ACTION_NONE:
         return ONION_E_NOT_FOUND;
     }

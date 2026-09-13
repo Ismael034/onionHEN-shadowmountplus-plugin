@@ -257,6 +257,7 @@ static void init_runtime_config_defaults(runtime_config_state_t *state) {
   state->cfg.kstuff_game_auto_toggle = true;
   state->cfg.kstuff_crash_detection_enabled = true;
   state->cfg.legacy_recursive_scan_forced = false;
+  state->cfg.scan_include_defaults = false;
   (void)strlcpy(state->cfg.global_fakelib_path, DEFAULT_GLOBAL_FAKELIB_PATH,
                 sizeof(state->cfg.global_fakelib_path));
   state->cfg.scan_depth = DEFAULT_SCAN_DEPTH;
@@ -1412,6 +1413,15 @@ static config_load_status_t load_runtime_config_state(runtime_config_state_t *st
       continue;
     }
 
+    if (strcasecmp(key, "scan_include_defaults") == 0) {
+      if (!parse_bool_ini(value, &bval)) {
+        log_debug("  [CFG] invalid bool at line %d: %s=%s", line_no, key, value);
+        continue;
+      }
+      state->cfg.scan_include_defaults = bval;
+      continue;
+    }
+
     if (strcasecmp(key, "scanpath") == 0) {
       if (!has_custom_scanpaths) {
         clear_runtime_scan_paths(state);
@@ -1460,6 +1470,11 @@ static config_load_status_t load_runtime_config_state(runtime_config_state_t *st
   if (has_custom_scanpaths && state->scan_path_count == 0) {
     log_debug("  [CFG] no valid scanpath entries, using defaults");
     init_runtime_scan_paths_defaults(state);
+  } else if (has_custom_scanpaths && state->cfg.scan_include_defaults) {
+    log_debug("  [CFG] scan_include_defaults=1, adding built-in paths to "
+              "custom scanpath list");
+    for (int i = 0; k_default_scan_paths[i] != NULL; i++)
+      (void)add_runtime_scan_path(state, k_default_scan_paths[i]);
   }
   add_runtime_managed_scan_paths(state);
 

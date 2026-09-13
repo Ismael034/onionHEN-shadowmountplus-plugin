@@ -119,10 +119,20 @@
 # md_ufs_sector_size=512
 
 # Optional custom scan roots (can be repeated):
-# If at least one scanpath=... is present, only these paths are used.
-# "/mnt/shadowmnt/pfsc" and "/mnt/shadowmnt" are always added automatically.
+# If at least one scanpath=... is present, only these paths are used, unless
+# scan_include_defaults=1 (below). "/mnt/shadowmnt/pfsc" and "/mnt/shadowmnt"
+# are always added automatically regardless.
 # Default: use built-in scan path list
 # scanpath=/data/homebrew
+
+# Also scan the built-in default paths in addition to any scanpath= entries
+# above, instead of replacing them:
+# 1/true/yes/on  -> keep built-in paths active alongside your custom ones
+# 0/false/no/off -> scanpath= entries replace the built-in list (legacy behavior)
+# Default: 0 (the ShadowMount+ plugin UI's path editor sets this to 1
+# automatically whenever it adds a custom path, so paths added there are
+# always additive)
+# scan_include_defaults=0
 
 ## Per-image mount mode override by file name (repeatable):
 ## image_ro=<image_filename>
